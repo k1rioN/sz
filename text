@@ -1,0 +1,178 @@
+
+Отправитель:	Моравский Даниил Романович
+Дата:	12.04.2023, 23:05
+Получатели:	Кириллов К.
+(Получатели, не прочитавшие сообщение, выделены)
+
+class Program
+{
+static void Main(string[] args)
+{
+bool repeat = true;
+while (repeat)
+{
+Console.WriteLine("Выберите способ ввода данных:");
+Console.WriteLine("1. Ввести данные вручную");
+Console.WriteLine("2. Загрузить данные из файла");
+Console.Write("Введите номер способа: ");
+string choice = Console.ReadLine();
+if (choice == "1")
+{
+Console.WriteLine("Введите значения предложения (supply), разделенные пробелами:");
+string supplyInput = Console.ReadLine();
+int[] supply = Array.ConvertAll(supplyInput.Split(' '), int.Parse);
+
+Console.WriteLine("Введите значения спроса (demand), разделенные пробелами:");
+string demandInput = Console.ReadLine();
+int[] demand = Array.ConvertAll(demandInput.Split(' '), int.Parse);
+
+Console.WriteLine("Введите матрицу стоимостей (costs):");
+int[,] costs = new int[supply.Length, demand.Length];
+for (int i = 0; i < supply.Length; i++)
+{
+Console.WriteLine($"Введите стоимости для поставщика {i + 1}, разделенные пробелами:");
+string costsInput = Console.ReadLine();
+int[] costsRow = Array.ConvertAll(costsInput.Split(' '), int.Parse);
+for (int j = 0; j < demand.Length; j++)
+{
+costs[i, j] = costsRow[j];
+}
+}
+
+int totalCost; // добавляем переменную для хранения общей стоимости
+int[,] solution = SolveTransportationProblem(supply, demand, costs, out totalCost); // добавляем out параметр
+
+
+Console.WriteLine("Результат решения транспортной задачи:");
+PrintMatrix(solution, totalCost);
+
+Console.WriteLine("Сохранение результата в файл...");
+SaveResultToFile(solution, totalCost);
+}
+else if (choice == "2")
+{
+Console.Write("Введите путь к файлу с входными данными: ");
+string filePath = Console.ReadLine();
+
+if (!File.Exists(filePath))
+{
+Console.WriteLine("Файл не найден.");
+return;
+}
+
+try
+{
+string[] lines = File.ReadAllLines(filePath);
+
+int[] supply = Array.ConvertAll(lines[0].Split(' '), int.Parse);
+int[] demand = Array.ConvertAll(lines[1].Split(' '), int.Parse);
+int[,] costs = new int[supply.Length, demand.Length];
+
+for (int i = 0; i < supply.Length; i++)
+{
+int[] costsRow = Array.ConvertAll(lines[i + 2].Split(' '), int.Parse);
+for (int j = 0; j < demand.Length; j++)
+{
+costs[i, j] = costsRow[j];
+}
+}
+
+
+int totalCost; // добавляем переменную для хранения общей стоимости
+int[,] solution = SolveTransportationProblem(supply, demand, costs, out totalCost); // добавляем out параметр
+
+
+Console.WriteLine("Результат решения транспортной задачи:");
+PrintMatrix(solution, totalCost);
+
+Console.WriteLine("Сохранение результата в файл...");
+SaveResultToFile(solution, totalCost);
+}
+catch (Exception ex)
+{
+Console.WriteLine($"Ошибка при чтении файла: {ex.Message}");
+}
+}
+else
+{
+Console.WriteLine("Неверный выбор.");
+}
+Console.Write("Хотите ли вы запустить алгоритм еще раз? (да/нет): ");
+string repeatChoice = Console.ReadLine();
+repeat = repeatChoice.ToLower() == "да";
+}
+}
+
+static int[,] SolveTransportationProblem(int[] supply, int[] demand, int[,] costs, out int totalCost)
+{
+int m = supply.Length;
+int n = demand.Length;
+int[,] solution = new int[m, n];
+int[] supplyCopy = (int[])supply.Clone();
+int[] demandCopy = (int[])demand.Clone();
+int cost = 0; // добавляем переменную для хранения общей стоимости
+for (int i = 0; i < m; i++)
+{
+for (int j = 0; j < n; j++)
+{
+while (supplyCopy[i] > 0 && demandCopy[j] > 0)
+{
+int min = Math.Min(supplyCopy[i], demandCopy[j]);
+solution[i, j] = min;
+supplyCopy[i] -= min;
+demandCopy[j] -= min;
+cost += min * costs[i, j]; // обновляем общую стоимость
+if (supplyCopy[i] == 0)
+{
+break;
+}
+}
+}
+}
+
+totalCost = cost; // передаем общую стоимость через out параметр
+return solution;
+}
+
+
+static void PrintMatrix(int[,] matrix, int totalCost) // добавляем параметр общей стоимости
+{
+int m = matrix.GetLength(0);
+int n = matrix.GetLength(1);
+
+for (int i = 0; i < m; i++)
+{
+for (int j = 0; j < n; j++)
+{
+Console.Write($"{matrix[i, j]}\t");
+}
+Console.WriteLine();
+}
+
+Console.WriteLine($"Общая стоимость: {totalCost}"); // выводим общую стоимость
+}
+
+static void SaveResultToFile(int[,] solution, int totalCost) // добавляем параметр общей стоимости
+{
+int m = solution.GetLength(0);
+int n = solution.GetLength(1);
+
+string[] lines = new string[m + 2]; // создаем массив строк, одна строка на каждую строку матрицы плюс две строки для записи итоговой стоимости и разделителя
+
+for (int i = 0; i < m; i++)
+{
+string line = "";
+for (int j = 0; j < n; j++)
+{
+line += $"{solution[i, j]}\t"; // добавляем значения матрицы в строку, разделенные табуляцией
+}
+lines[i] = line.TrimEnd('\t'); // удаляем последний символ табуляции из строки и сохраняем в массив строк
+}
+
+lines[m] = ""; // записываем пустую строку в массив строк для разделителя
+
+lines[m + 1] = $"Общая стоимость: {totalCost}"; // записываем итоговую стоимость в массив строк
+
+File.WriteAllLines("result.txt", lines); // сохраняем массив строк в файл
+}
+}
